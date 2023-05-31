@@ -69,8 +69,20 @@ async function run() {
       res.send(token);
     });
 
+    //Warning : use verifyJWT before using verifyAdmin
+    const verifyAdmin = async (req, res, next) => {
+      const uid = req.decoded.uid;
+      const query = { uerUid: uid };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "Forbidden Access" });
+      }
+      next();
+    };
     // user api operation
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const allUser = await userCollection.find().toArray();
       res.send(allUser);
     });
@@ -97,6 +109,16 @@ async function run() {
       };
       const updateUser = await userCollection.updateOne(filter, updateDoc);
       res.send(updateUser);
+    });
+    app.get("/users/admin/:uid", verifyJWT, async (req, res) => {
+      const uid = req.params.uid;
+      if (req.decoded?.uid !== uid) {
+        res.send({ admin: false });
+      }
+      const query = { userUid: uid };
+      const user = await userCollection.findOne(query);
+      const result = { admin: user?.role === "admin" };
+      res.send(result);
     });
     // delete user
     app.delete("/users/:id", async (req, res) => {
