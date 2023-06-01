@@ -72,7 +72,7 @@ async function run() {
     //Warning : use verifyJWT before using verifyAdmin
     const verifyAdmin = async (req, res, next) => {
       const uid = req.decoded.uid;
-      const query = { uerUid: uid };
+      const query = { userUid: uid };
       const user = await userCollection.findOne(query);
       if (user?.role !== "admin") {
         return res
@@ -113,7 +113,7 @@ async function run() {
     app.get("/users/admin/:uid", verifyJWT, async (req, res) => {
       const uid = req.params.uid;
       if (req.decoded?.uid !== uid) {
-        res.send({ admin: false });
+        return res.send({ admin: false });
       }
       const query = { userUid: uid };
       const user = await userCollection.findOne(query);
@@ -152,22 +152,21 @@ async function run() {
       const query = { userUid: uid };
 
       if (!uid) {
-        res.send([]);
+        return res.send([]);
       }
-      console.log(req.decoded);
       if (uid !== req.decoded?.uid) {
         return res
           .status(403)
-          .send({ error: true, message: "Forbidden Access" });
+          .send({ error: true, message: "Forbidden Access by cart" });
       }
-      app.delete("/carts/:id", async (req, res) => {
-        const itemId = req.params.id;
-        const query = { _id: new ObjectId(itemId) };
-        const result = await cartCollection.deleteOne(query);
-        res.send(result);
-      });
       const menuByUser = await cartCollection.find(query).toArray();
       res.send(menuByUser);
+    });
+    app.delete("/carts/:id", async (req, res) => {
+      const itemId = req.params.id;
+      const query = { _id: new ObjectId(itemId) };
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
     });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
