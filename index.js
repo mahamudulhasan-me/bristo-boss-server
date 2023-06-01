@@ -15,14 +15,14 @@ const verifyJWT = (req, res, next) => {
   if (!authorization) {
     return res
       .status(401)
-      .send({ error: true, message: "Authorization required" });
+      .send({ error: true, message: "Authorization required 1" });
   }
   const token = authorization.split(" ")[1];
   jwt.verify(token, process.env.JWT_SIGNATURE, (error, decode) => {
     if (error) {
       return res
         .status(401)
-        .send({ error: true, message: "Authorization required" });
+        .send({ error: true, message: "Authorization required 2" });
     }
     req.decoded = decode;
     next();
@@ -77,7 +77,7 @@ async function run() {
       if (user?.role !== "admin") {
         return res
           .status(403)
-          .send({ error: true, message: "Forbidden Access" });
+          .send({ error: true, message: "Forbidden Access 3" });
       }
       next();
     };
@@ -135,6 +135,17 @@ async function run() {
       res.send(allMenuItems);
     });
 
+    app.post("/menu", verifyJWT, verifyAdmin, async (req, res) => {
+      const newMenu = req.body;
+      const addNewMenuItem = await menuCollection.insertOne(newMenu);
+      res.send(addNewMenuItem);
+    });
+    app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const deleteMenuItem = await menuCollection.deleteOne(query);
+      res.send(deleteMenuItem);
+    });
     // review operation
     app.get("/review", async (req, res) => {
       const allReview = await reviewCollection.find().toArray();
@@ -149,18 +160,19 @@ async function run() {
     });
     app.get("/carts", verifyJWT, async (req, res) => {
       const uid = req.query.uid;
-      const query = { userUid: uid };
-
+      console.log(uid);
+      console.log(req.decoded);
       if (!uid) {
         return res.send([]);
       }
+      const query = { userUid: uid };
       if (uid !== req.decoded?.uid) {
         return res
           .status(403)
-          .send({ error: true, message: "Forbidden Access by cart" });
+          .send({ error: true, message: "Forbidden Access by cart 5" });
       }
-      const menuByUser = await cartCollection.find(query).toArray();
-      res.send(menuByUser);
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
     });
     app.delete("/carts/:id", async (req, res) => {
       const itemId = req.params.id;
