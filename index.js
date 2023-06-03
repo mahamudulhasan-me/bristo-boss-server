@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -59,6 +60,8 @@ async function run() {
     const reviewCollection = bristoBossDB.collection("review");
     // carts collection
     const cartCollection = bristoBossDB.collection("carts");
+    // payment collection
+    const paymentCollection = bristoBossDB.collection("payments");
 
     // JWT OPERATION
     app.post("/jwt", (req, res) => {
@@ -123,7 +126,7 @@ async function run() {
     // delete user
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+
       const query = { _id: new ObjectId(id) };
       const deleteUser = await userCollection.deleteOne(query);
       res.send(deleteUser);
@@ -160,8 +163,7 @@ async function run() {
     });
     app.get("/carts", verifyJWT, async (req, res) => {
       const uid = req.query.uid;
-      console.log(uid);
-      console.log(req.decoded);
+
       if (!uid) {
         return res.send([]);
       }
@@ -178,6 +180,26 @@ async function run() {
       const itemId = req.params.id;
       const query = { _id: new ObjectId(itemId) };
       const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+
+      const paymentMethod = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentMethod.client_secret,
+      });
+    });
+    app.post("/payment", async (req, res) => {
+      const payment = req.body;
+      const result = await payment;
       res.send(result);
     });
     // Send a ping to confirm a successful connection
