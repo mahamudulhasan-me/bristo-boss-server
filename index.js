@@ -208,6 +208,17 @@ async function run() {
 
       res.send({ insertedResult, deletedResult });
     });
+
+    // admin statistics
+    app.get("/admin-stats", verifyJWT, verifyAdmin, async (req, res) => {
+      const customers = await userCollection.estimatedDocumentCount();
+      const products = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+      const revenue = await paymentCollection
+        .aggregate([{ $group: { _id: null, total: { $sum: "$price" } } }])
+        .toArray();
+      res.send({ revenue, customers, products, orders });
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
