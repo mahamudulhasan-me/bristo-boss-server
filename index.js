@@ -197,10 +197,16 @@ async function run() {
         clientSecret: paymentMethod.client_secret,
       });
     });
-    app.post("/payment", async (req, res) => {
+    app.post("/payments", verifyJWT, async (req, res) => {
       const payment = req.body;
-      const result = await payment;
-      res.send(result);
+      const insertedResult = await paymentCollection.insertOne(payment);
+
+      const query = {
+        _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+      };
+      const deletedResult = await cartCollection.deleteMany(query);
+
+      res.send({ insertedResult, deletedResult });
     });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
