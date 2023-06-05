@@ -199,6 +199,8 @@ async function run() {
     });
     app.post("/payments", verifyJWT, async (req, res) => {
       const payment = req.body;
+      const menuItems = payment.menuItems.map((item) => new ObjectId(item));
+      payment.menuItems = menuItems;
       const insertedResult = await paymentCollection.insertOne(payment);
 
       const query = {
@@ -218,6 +220,41 @@ async function run() {
         .aggregate([{ $group: { _id: null, total: { $sum: "$price" } } }])
         .toArray();
       res.send({ revenue, customers, products, orders });
+    });
+
+    // order statistics
+    app.get("/order-stats", async (req, res) => {
+      const pipeline = [
+        {
+          $lookup: {
+            from: "menu", // or menuCollection
+            localField: "menuItems",
+            foreignField: "_id",
+            as: "menuItemsData",
+          },
+        },
+        {
+          $unwind: "$menuItemsData",
+        },
+        {
+          $group: {
+            _id: "$menuItemsData.category",
+            count: { $sum: 1 },
+            totalPrice: { $sum: "$menuItemsData.price" },
+          },
+        },
+        {
+          $project: {
+            category: "$_id",
+            count: 1,
+            total: { $round: ["$totalPrice", 2] },
+            _id: 0,
+          },
+        },
+      ];
+      const result = await paymentCollection.aggregate(pipeline).toArray();
+      console.log({ result });
+      res.send(result);
     });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
